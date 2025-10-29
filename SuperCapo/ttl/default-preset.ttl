@@ -1,0 +1,30 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix pset:  <http://lv2plug.in/ns/ext/presets#> .
+@prefix state: <http://lv2plug.in/ns/ext/state#> .
+
+<default-preset>
+	a pset:Preset ;
+	lv2:appliesTo <http://moddevices.com/plugins/mod-devel/SuperCapo> ;
+	lv2:port [
+		lv2:symbol "Mode" ;
+		pset:value 0.0
+	] , [
+		lv2:symbol "Interval" ;
+		pset:value 3.0
+	] , [
+		lv2:symbol "Direction" ;
+		pset:value 1.0
+	] , [
+		lv2:symbol "ShiftTime" ;
+		pset:value 0.200
+	] , [
+		lv2:symbol "ReturnTime" ;
+		pset:value 0.200
+	] , [
+		lv2:symbol "Clean" ;
+		pset:value 0.0
+	] , [
+		lv2:symbol "Gain" ;
+		pset:value 3.0
+	] .
+
