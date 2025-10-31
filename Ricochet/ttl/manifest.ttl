@@ -1,14 +1,14 @@
 @prefix lv2:  <http://lv2plug.in/ns/lv2core#>.
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
 
-<http://moddevices.com/plugins/mod-devel/Ricochet> a lv2:Plugin;
-    lv2:binary <mod-superwhammy.so>;
-    rdfs:seeAlso <SuperWhammy.ttl>.
+<https://github.com/theKAOSSphere/ricochet> a lv2:Plugin;
+    lv2:binary <mod-ricochet.so>;
+    rdfs:seeAlso <Ricochet.ttl>.
 
 
 
 <default-preset>
     a <http://lv2plug.in/ns/ext/presets#Preset> ;
-    <http://lv2plug.in/ns/lv2core#appliesTo> <http://moddevices.com/plugins/mod-devel/Ricochet> ;
+    <http://lv2plug.in/ns/lv2core#appliesTo> <https://github.com/theKAOSSphere/ricochet> ;
     <http://www.w3.org/2000/01/rdf-schema#label> "Default" ;
     <http://www.w3.org/2000/01/rdf-schema#seeAlso> <default-preset.ttl> .

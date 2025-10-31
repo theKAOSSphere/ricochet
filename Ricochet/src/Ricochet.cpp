@@ -6,10 +6,11 @@
 
 /**********************************************************************************************************************************************************/
 
-#define PLUGIN_URI "http://moddevices.com/plugins/mod-devel/SuperCapo"
-#define FIDELITY0 8,4,2,1
-#define FIDELITY1 16,8,4,2
-#define FIDELITY2 24,12,6,3
+#define PLUGIN_URI "https://github.com/theKAOSSphere/ricochet"
+#define FIDELITY0 6,3,2,1
+#define FIDELITY1 12,6,3,2
+#define FIDELITY2 16,8,4,2
+#define FIDELITY3 20,10,5,3
 enum {IN, OUT, TRIGGER, MODE, INTERVAL, DIRECTION, SHIFT_TIME, RETURN_TIME, CLEAN, GAIN, FIDELITY, PLUGIN_PORT_COUNT};
 
 namespace
@@ -36,18 +37,18 @@ namespace
 
 /**********************************************************************************************************************************************************/
 
-class SuperCapo
+class Ricochet
 {
 public:
-    SuperCapo(uint32_t n_samples, int nBuffers, double samplerate, const std::string& wfile)
+    Ricochet(uint32_t n_samples, int nBuffers, double samplerate, const std::string& wfile)
     {
         wisdomFile = wfile;
         Construct(n_samples, nBuffers, samplerate, wfile.c_str());
     }
-    ~SuperCapo(){Destruct();}
+    ~Ricochet(){Destruct();}
     void Construct(uint32_t n_samples, int nBuffers, double samplerate, const char* wisdomFile)
     {
-    	this->nBuffers = nBuffers;
+        this->nBuffers = nBuffers;
         SampleRate = samplerate;
 
         obja = new PSAnalysis(n_samples, nBuffers, wisdomFile);
@@ -84,7 +85,7 @@ public:
 
         switch (fidelity)
         {
-        case 0:
+        case 0: 
             bufsize = nBuffersSW(n_samples,FIDELITY0);
             break;
         case 1:
@@ -92,6 +93,9 @@ public:
             break;
         case 2:
             bufsize = nBuffersSW(n_samples,FIDELITY2);
+            break;
+        case 3:
+            bufsize = nBuffersSW(n_samples,FIDELITY3);
             break;
         default:
             return;
@@ -141,13 +145,13 @@ public:
 
 static const LV2_Descriptor Descriptor = {
     PLUGIN_URI,
-    SuperCapo::instantiate,
-    SuperCapo::connect_port,
-    SuperCapo::activate,
-    SuperCapo::run,
-    SuperCapo::deactivate,
-    SuperCapo::cleanup,
-    SuperCapo::extension_data
+    Ricochet::instantiate,
+    Ricochet::connect_port,
+    Ricochet::activate,
+    Ricochet::run,
+    Ricochet::deactivate,
+    Ricochet::cleanup,
+    Ricochet::extension_data
 };
 
 /**********************************************************************************************************************************************************/
@@ -161,20 +165,20 @@ const LV2_Descriptor* lv2_descriptor(uint32_t index)
 
 /**********************************************************************************************************************************************************/
 
-LV2_Handle SuperCapo::instantiate(const LV2_Descriptor* descriptor, double samplerate, const char* bundle_path, const LV2_Feature* const* features)
+LV2_Handle Ricochet::instantiate(const LV2_Descriptor* descriptor, double samplerate, const char* bundle_path, const LV2_Feature* const* features)
 {
     std::string wisdomFile = bundle_path;
     wisdomFile += "/harmonizer.wisdom";
     const uint32_t n_samples = GetBufferSize(features);
-    SuperCapo *plugin = new SuperCapo(n_samples, nBuffersSW(n_samples,FIDELITY1), samplerate, wisdomFile);
+    Ricochet *plugin = new Ricochet(n_samples, nBuffersSW(n_samples,FIDELITY1), samplerate, wisdomFile);
     return (LV2_Handle)plugin;
 }
 
 /**********************************************************************************************************************************************************/
 
-void SuperCapo::activate(LV2_Handle instance)
+void Ricochet::activate(LV2_Handle instance)
 {
-    SuperCapo *plugin = (SuperCapo *)instance;
+    Ricochet *plugin = (Ricochet *)instance;
     plugin->current_s = 0.0;
     plugin->ramp_position = 0.0;
     plugin->ramp_target = 0.0;
@@ -189,24 +193,23 @@ void SuperCapo::activate(LV2_Handle instance)
 
 /**********************************************************************************************************************************************************/
 
-void SuperCapo::deactivate(LV2_Handle instance){}
+void Ricochet::deactivate(LV2_Handle instance){}
 
 /**********************************************************************************************************************************************************/
 
-void SuperCapo::connect_port(LV2_Handle instance, uint32_t port, void *data)
+void Ricochet::connect_port(LV2_Handle instance, uint32_t port, void *data)
 {
-    SuperCapo *plugin;
-    plugin = (SuperCapo *) instance;
+    Ricochet *plugin;
+    plugin = (Ricochet *) instance;
     plugin->ports[port] = (float*) data;
 }
 
 /**********************************************************************************************************************************************************/
 
-
-void SuperCapo::run(LV2_Handle instance, uint32_t n_samples)
+void Ricochet::run(LV2_Handle instance, uint32_t n_samples)
 {
-    SuperCapo *plugin;
-    plugin = (SuperCapo *) instance;
+    Ricochet *plugin;
+    plugin = (Ricochet *) instance;
 
     float *in       = plugin->ports[IN];
     float *out      = plugin->ports[OUT];
@@ -216,8 +219,8 @@ void SuperCapo::run(LV2_Handle instance, uint32_t n_samples)
     bool   up       = (*(plugin->ports[DIRECTION]) >= 0.5f);
     double shift    = std::max(0.0, (double)(*(plugin->ports[SHIFT_TIME])));
     double retrn    = std::max(0.0, (double)(*(plugin->ports[RETURN_TIME])));
-    int    clean    = (int)(*(plugin->ports[CLEAN])+0.5f);
     double gain     = (double)(*(plugin->ports[GAIN]));
+    int    clean    = (int)(*(plugin->ports[CLEAN])+0.5f);
     int    fidelity = (int)(*(plugin->ports[FIDELITY])+0.5f);
 
     plugin->SetFidelity(fidelity, n_samples);
@@ -233,36 +236,37 @@ void SuperCapo::run(LV2_Handle instance, uint32_t n_samples)
     (plugin->obja)->PreAnalysis(plugin->nBuffers, in);
     (plugin->objs)->PreSinthesis();
 
-    if (plugin->cont < plugin->nBuffers-1)
-        plugin->cont = plugin->cont + 1;
-    else
-    {
+	if (plugin->cont < plugin->nBuffers-1)
+		plugin->cont = plugin->cont + 1;
+	else
+	{
         (plugin->obja)->Analysis();
         (plugin->objs)->Sinthesis(semitone);
         (plugin->objg)->SimpleGain((plugin->objs)->yshift, out);
         if (plugin->auto_add_dry || clean == 1)
         {
-            for (uint32_t i = 0; i < n_samples; ++i)
-                out[i] += in[i];
+            const float *dry = (plugin->obja)->frames;
+            for (uint32_t i = 0; i<n_samples; ++i)
+                out[i] += dry[i];
         }
-    }
+	}
 }
 
 /**********************************************************************************************************************************************************/
 
-void SuperCapo::cleanup(LV2_Handle instance)
+void Ricochet::cleanup(LV2_Handle instance)
 {
-    delete ((SuperCapo *) instance);
+    delete ((Ricochet *) instance);
 }
 
 /**********************************************************************************************************************************************************/
 
-const void* SuperCapo::extension_data(const char* uri)
+const void* Ricochet::extension_data(const char* uri)
 {
     return NULL;
 }
 
-double SuperCapo::UpdateStep(bool trigger_active,
+double Ricochet::UpdateStep(bool trigger_active,
                       bool latch_mode,
                       double interval_control,
                       bool direction_up,

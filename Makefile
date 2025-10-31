@@ -1,14 +1,11 @@
 all: Shared_files/harmonizer.wisdom
-	$(MAKE) -C SuperCapo
-	$(MAKE) -C SuperWhammy
+	$(MAKE) -C Ricochet
 
 install: all
-	$(MAKE) -C SuperCapo install
-	$(MAKE) -C SuperWhammy install
+	$(MAKE) -C Ricochet install
 
 clean:
-	$(MAKE) -C SuperCapo clean
-	$(MAKE) -C SuperWhammy clean
+	$(MAKE) -C Ricochet clean
 	rm -f Shared_files/*.o
 	rm -f Shared_files/harmonizer.wisdom
 

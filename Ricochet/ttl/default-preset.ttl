@@ -4,7 +4,7 @@
 
 <default-preset>
 	a pset:Preset ;
-	lv2:appliesTo <http://moddevices.com/plugins/mod-devel/SuperCapo> ;
+	lv2:appliesTo <https://github.com/theKAOSSphere/ricochet> ;
 	lv2:port [
 		lv2:symbol "Mode" ;
 		pset:value 0.0
