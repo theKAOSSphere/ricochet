@@ -1,0 +1,6 @@
+config BR2_PACKAGE_RICOCHET
+	bool "ricochet"
+	help
+	  Ricochet pitch shifter LV2 plugin
+
+	  https://github.com/theKAOSSphere/ricochet
