@@ -2,7 +2,7 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
 
 <https://github.com/theKAOSSphere/ricochet> a lv2:Plugin;
-    lv2:binary <mod-ricochet.so>;
+    lv2:binary <ricochet.so>;
     rdfs:seeAlso <Ricochet.ttl>.
 
 
