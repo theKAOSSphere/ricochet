@@ -1,5 +1,10 @@
+ifeq ($(SKIP_WISDOM),1)
+all:
+	$(MAKE) -C Ricochet
+else
 all: Shared_files/harmonizer.wisdom
 	$(MAKE) -C Ricochet
+endif
 
 install: all
 	$(MAKE) -C Ricochet install

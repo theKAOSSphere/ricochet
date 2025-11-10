@@ -13,7 +13,7 @@ endif
 RM = rm -f
 
 # plugin name
-PLUGIN = mod-$(shell basename $(shell pwd) | tr A-Z a-z)
+PLUGIN = $(shell basename $(shell pwd) | tr A-Z a-z)
 PLUGIN_SO = $(PLUGIN).so
 
 # effect path
@@ -46,7 +46,7 @@ clean:
 
 install: all
 	mkdir -p $(INSTALLATION_PATH)
-	cp -rL $(PLUGIN_SO) ttl/* $(INSTALLATION_PATH)
+	cp -rL $(PLUGIN_SO) ttl/* src/modgui $(INSTALLATION_PATH)
 
 %.o: %.cpp
 	$(CXX) $< $(CXXFLAGS) -c -o $@

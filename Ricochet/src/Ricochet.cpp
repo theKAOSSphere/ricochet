@@ -245,9 +245,9 @@ void Ricochet::run(LV2_Handle instance, uint32_t n_samples)
         (plugin->objg)->SimpleGain((plugin->objs)->yshift, out);
         if (plugin->auto_add_dry || clean == 1)
         {
-            const float *dry = (plugin->obja)->frames;
+            const double *dry = (plugin->obja)->frames;
             for (uint32_t i = 0; i<n_samples; ++i)
-                out[i] += dry[i];
+                out[i] += static_cast<float>(dry[i]);
         }
 	}
 }
