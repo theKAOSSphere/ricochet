@@ -1,7 +1,18 @@
+# Ricochet
+
+## Description
+
 Based on the MOD Audio pitch shifting plugins: https://github.com/mod-audio/mod-pitchshifter
 
-Inspired by the classic DigiTech Whammy Ricochet(*), this pitch-shifter can shift an input pitch from -24 semitones down to +24 semitones up.
+Inspired by the classic DigiTech Whammy Ricochet(*), this pitch-shifter can shift an input pitch from -24 semitones down to +24 semitones up. Functionality mimics the behaviour of the original hardware pedal, including:
+* Momentary and latching modes,
+* Adjustable shift and return times,
+* A clean blend option,
+* Selectable pitch shift direction, and
+* Interval selection.
 
+
+## Controls Usage
 * "Interval" selects the target pitch step (2nd, 4th, 5th, Octave, etc.) and "Direction" chooses whether that sweep goes up or down.
 * "Shift Time" and "Return Time" define how fast the pitch glides to and from the target when the trigger engages or releases.
 * Use "Mode" to pick momentary or latching behaviour. 
