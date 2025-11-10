@@ -47,6 +47,7 @@ clean:
 install: all
 	mkdir -p $(INSTALLATION_PATH)
 	cp -rL $(PLUGIN_SO) ttl/* src/modgui $(INSTALLATION_PATH)
+	cp $(SHARED_DIR)/harmonizer.wisdom.raspberrypi4 $(INSTALLATION_PATH)/harmonizer.wisdom
 
 %.o: %.cpp
 	$(CXX) $< $(CXXFLAGS) -c -o $@

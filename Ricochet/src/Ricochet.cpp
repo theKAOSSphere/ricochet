@@ -11,6 +11,8 @@
 #define FIDELITY1 12,6,3,2
 #define FIDELITY2 16,8,4,2
 #define FIDELITY3 20,10,5,3
+#define FIDELITY4 32,16,8,4
+#define FIDELITY5 48,24,12,6
 enum {IN, OUT, TRIGGER, MODE, INTERVAL, DIRECTION, SHIFT_TIME, RETURN_TIME, CLEAN, GAIN, FIDELITY, PLUGIN_PORT_COUNT};
 
 namespace
@@ -96,6 +98,12 @@ public:
             break;
         case 3:
             bufsize = nBuffersSW(n_samples,FIDELITY3);
+            break;
+        case 4:
+            bufsize = nBuffersSW(n_samples,FIDELITY4);
+            break;
+        case 5:
+            bufsize = nBuffersSW(n_samples,FIDELITY5);
             break;
         default:
             return;
