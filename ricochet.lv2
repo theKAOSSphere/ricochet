@@ -1,0 +1,3 @@
+# Placeholder for the MOD build system.
+# The build system requires a file with the same name as the bundle
+# to be present in the package directory before the build starts.
