@@ -13,6 +13,7 @@ Inspired by the classic DigiTech Whammy Ricochet(*), this pitch-shifter can shif
 
 
 ## Controls Usage
+* "Trigger" engages or disengages the pitch shift effect.
 * "Interval" selects the target pitch step (2nd, 4th, 5th, Octave, etc.) and "Direction" chooses whether that sweep goes up or down.
 * "Shift Time" and "Return Time" define how fast the pitch glides to and from the target when the trigger engages or releases.
 * Use "Mode" to pick momentary or latching behaviour. 
@@ -21,6 +22,11 @@ Inspired by the classic DigiTech Whammy Ricochet(*), this pitch-shifter can shif
   * The Lo-Fi setting is reminiscent of bit-crushed sounds, if you are looking for those synthesizer-like basslines, or dirty octave-up sounds, this is your setting!
   * The Hi-Fi setting is great if you are looking to emulate (for example) something like a 12-string guitar, be sure to mind that CPU-meter in the bottom-right of the screen though! 
   * The settings in between are created to let you make the perfect trade-off between quality and performance. 
+  * Additionally, there are even higher fidelity settings named Ultra and Insane. They offer higher quality but add noticeable latency. Ultra is as high as I can go without the latency being too distracting.
+* "True Bypass" allows you to select the plugin behaviour when Trigger is off.
+  * When enabled, the plugin will route the input signal directly to the output when Trigger is off. This eliminates any latency when the Trigger is not engaged, but the transitions when engaging/disengaging the Trigger may be less smooth.
+  * When disabled, the plugin will still process the input signal even when Trigger is off. The pitch glides are smoother but latency is added even when the Trigger is not engaged.
+
 
 (*) 'Other product names modeled in this software are trademarks of their respective companies that do not endorse and are not associated or affiliated with me.
 Digitech Whammy is a trademark or trade name of another manufacturer and was used merely to identify the product whose sound was reviewed in the creation of this product.

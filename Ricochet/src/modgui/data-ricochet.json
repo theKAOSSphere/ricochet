@@ -37,6 +37,10 @@
         {
             "name": "Fidelity", 
             "symbol": "Fidelity"
+        }, 
+        {
+            "name": "Bypass", 
+            "symbol": "Bypass"
         }
     ], 
     "label": "Ricochet"
