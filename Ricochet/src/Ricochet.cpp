@@ -13,7 +13,7 @@
 #define FIDELITY3 20,10,5,3
 #define FIDELITY4 32,16,8,4
 #define FIDELITY5 48,24,12,6
-enum {IN, OUT, TRIGGER, MODE, INTERVAL, DIRECTION, SHIFT_TIME, RETURN_TIME, CLEAN, GAIN, FIDELITY, PLUGIN_PORT_COUNT};
+enum {IN, OUT, TRIGGER, MODE, INTERVAL, DIRECTION, SHIFT_TIME, RETURN_TIME, CLEAN, WET_GAIN, FIDELITY, TRUE_BYPASS, PLUGIN_PORT_COUNT};
 
 namespace
 {
@@ -28,6 +28,7 @@ namespace
         {2.0, false},   // Major second
         {5.0, false},   // Perfect fourth
         {7.0, false},   // Perfect fifth
+        {11.0, false},  // Major seventh
         {12.0, false},  // Octave
         {24.0, false},  // Double octave
         {12.0, true}    // Octave + Dry
@@ -57,6 +58,8 @@ public:
         objs = new PSSinthesis(obja, wisdomFile);
         objg = new GainClass(n_samples);
 
+        last_out = new float[n_samples];
+
         cont = 0;
         current_s = 0.0;
         ramp_position = 0.0;
@@ -74,6 +77,7 @@ public:
     	delete obja;
         delete objs;
         delete objg;
+        delete[] last_out;
     }
     void Realloc(uint32_t n_samples, int nBuffers)
     {
@@ -147,6 +151,13 @@ public:
     bool prev_trigger_state;
     bool last_mode_was_latch;
     bool auto_add_dry;
+    bool engaged;
+    bool was_true_bypassing;
+    bool fading_in;
+    bool fading_out;
+    bool prev_engaged;
+    float* last_out;
+    double prev_ramp_samples_remaining;
 };
 
 /**********************************************************************************************************************************************************/
@@ -197,6 +208,12 @@ void Ricochet::activate(LV2_Handle instance)
     plugin->prev_trigger_state = false;
     plugin->last_mode_was_latch = false;
     plugin->auto_add_dry = false;
+    plugin->engaged = false;
+    plugin->was_true_bypassing = false;
+    plugin->fading_in = false;
+    plugin->fading_out = false;
+    plugin->prev_engaged = false;
+    plugin->prev_ramp_samples_remaining = 0.0;
 }
 
 /**********************************************************************************************************************************************************/
@@ -219,20 +236,59 @@ void Ricochet::run(LV2_Handle instance, uint32_t n_samples)
     Ricochet *plugin;
     plugin = (Ricochet *) instance;
 
-    float *in       = plugin->ports[IN];
-    float *out      = plugin->ports[OUT];
-    bool   trigger  = (*(plugin->ports[TRIGGER]) >= 0.5f);
-    bool   latch    = (*(plugin->ports[MODE])    >= 0.5f);
-    double interval = (double)(*(plugin->ports[INTERVAL]));
-    bool   up       = (*(plugin->ports[DIRECTION]) >= 0.5f);
-    double shift    = std::max(0.0, (double)(*(plugin->ports[SHIFT_TIME])));
-    double retrn    = std::max(0.0, (double)(*(plugin->ports[RETURN_TIME])));
-    double gain     = (double)(*(plugin->ports[GAIN]));
-    int    clean    = (int)(*(plugin->ports[CLEAN])+0.5f);
-    int    fidelity = (int)(*(plugin->ports[FIDELITY])+0.5f);
+    float *in           = plugin->ports[IN];
+    float *out          = plugin->ports[OUT];
+    bool   trigger      = (*(plugin->ports[TRIGGER]) >= 0.5f);
+    bool   latch        = (*(plugin->ports[MODE])    >= 0.5f);
+    double interval     = (double)(*(plugin->ports[INTERVAL]));
+    bool   up           = (*(plugin->ports[DIRECTION]) >= 0.5f);
+    double shift        = std::max(0.0, (double)(*(plugin->ports[SHIFT_TIME])));
+    double retrn        = std::max(0.0, (double)(*(plugin->ports[RETURN_TIME])));
+    double wet_gain     = (double)(*(plugin->ports[WET_GAIN]));
+    int    clean        = (int)(*(plugin->ports[CLEAN])+0.5f);
+    int    fidelity     = (int)(*(plugin->ports[FIDELITY])+0.5f);
+    bool   true_bypass  = (*(plugin->ports[TRUE_BYPASS]) >= 0.5f);
 
     plugin->SetFidelity(fidelity, n_samples);
     double semitone = plugin->UpdateStep(trigger, latch, interval, up, shift, retrn, n_samples);
+
+    // Check if the ramp just finished this block
+    bool ramp_just_finished = (plugin->ramp_samples_remaining == 0.0) && (plugin->prev_ramp_samples_remaining > 0.0);
+    plugin->prev_ramp_samples_remaining = plugin->ramp_samples_remaining;
+
+    // Start fade in when engaging (ONLY if true bypass is enabled)
+    if (true_bypass && plugin->engaged && !plugin->prev_engaged) {
+        plugin->fading_in = true;
+        plugin->fading_out = false; // Ensure only one fade is active
+    }
+    
+    // Start fade out when ramp to zero is complete and we are disengaged (ONLY if true bypass is enabled)
+    if (true_bypass && !plugin->engaged && ramp_just_finished && plugin->ramp_target == 0.0) {
+        plugin->fading_out = true;
+        plugin->fading_in = false; // Ensure only one fade is active
+    }
+    
+    plugin->prev_engaged = plugin->engaged;
+
+    (plugin->obja)->PreAnalysis(plugin->nBuffers, in);
+    (plugin->objs)->PreSinthesis();
+
+    if (true_bypass && !plugin->fading_in && !plugin->fading_out && !plugin->engaged && plugin->ramp_position == 0.0 && plugin->ramp_samples_remaining == 0.0) {
+        memcpy(out, in, n_samples * sizeof(float));
+        plugin->was_true_bypassing = true;
+        return;
+    }
+
+    if (plugin->was_true_bypassing) {
+        if (!plugin->engaged) {
+            (plugin->objs)->ClearBuffers();
+        } else {
+
+            (plugin->objs)->SetYShiftFromInput(in, n_samples);
+        }
+        plugin->cont = 0;
+    }
+    plugin->was_true_bypassing = false;
 
     if (InputAbsSum(in, n_samples) == 0)
     {
@@ -240,16 +296,53 @@ void Ricochet::run(LV2_Handle instance, uint32_t n_samples)
         return;
     }
 
-    (plugin->objg)->SetGaindB(gain);
-    (plugin->obja)->PreAnalysis(plugin->nBuffers, in);
-    (plugin->objs)->PreSinthesis();
+    (plugin->objg)->SetGaindB(wet_gain);
 
+	bool processed = false;
 	if (plugin->cont < plugin->nBuffers-1)
 		plugin->cont = plugin->cont + 1;
 	else
 	{
         (plugin->obja)->Analysis();
         (plugin->objs)->Sinthesis(semitone);
+        (plugin->objg)->SimpleGain((plugin->objs)->yshift, out);
+        if (plugin->auto_add_dry || clean == 1)
+        {
+            const double *dry = (plugin->obja)->frames;
+            for (uint32_t i = 0; i<n_samples; ++i)
+                out[i] += static_cast<float>(dry[i]);
+        }
+        processed = true;
+	}
+
+	if (processed) {
+        memcpy(plugin->last_out, out, n_samples * sizeof(float));
+        if (plugin->fading_in) {
+            for (uint32_t i = 0; i < n_samples; ++i) {
+                float f = i / (float)n_samples;
+                out[i] = in[i] * (1.0f - f) + out[i] * f;
+            }
+            plugin->fading_in = false;
+        } else if (plugin->fading_out) {
+            for (uint32_t i = 0; i < n_samples; ++i) {
+                float f = 1.0f - i / (float)n_samples;
+                out[i] = out[i] * f + in[i] * (1.0f - f);
+            }
+            plugin->fading_out = false;
+        }
+    } else if (plugin->fading_out) {
+        for (uint32_t i = 0; i < n_samples; ++i) {
+            float f = 1.0f - i / (float)n_samples;
+            out[i] = plugin->last_out[i] * f + in[i] * (1.0f - f);
+        }
+        plugin->fading_out = false;
+    } else {
+        // memcpy(out, in, n_samples * sizeof(float));
+        // This is the "buffered bypass" path.
+        // It MUST output the same signal as the processed path
+        // to avoid "flicker".
+        (plugin->obja)->Analysis();
+        (plugin->objs)->Sinthesis(0.0); // Force 0.0 semitones
         (plugin->objg)->SimpleGain((plugin->objs)->yshift, out);
         if (plugin->auto_add_dry || clean == 1)
         {
@@ -308,6 +401,8 @@ double Ricochet::UpdateStep(bool trigger_active,
 
     prev_trigger_state = trigger_active;
     last_mode_was_latch = latch_mode;
+
+    this->engaged = engaged;
 
     double target = engaged ? (direction_up ? choice.semitones : -choice.semitones) : 0.0;
     double duration = engaged ? shift_time : return_time;

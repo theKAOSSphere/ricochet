@@ -172,6 +172,27 @@ void PSSinthesis::PreSinthesis()
 	for (int k=0; k< Qcolumn-1; k++) hops[k] = hops[k+1];
 }
 
+void PSSinthesis::ClearYShift()
+{
+    fill_n(yshift, hopa, 0.0);
+}
+
+void PSSinthesis::ClearBuffers()
+{
+    int L = 2 * N + 4 * (Qcolumn - 1) * hopa;
+    memset(ysaida, 0, sizeof(double) * L);
+    first = true;
+    Phi.zeros(N/2 + 1);
+    PhiPrevious.zeros(N/2 + 1);
+}
+
+void PSSinthesis::SetYShiftFromInput(const float* in, int n)
+{
+    for (int i = 0; i < n; ++i) {
+        yshift[i] = in[i];
+    }
+}
+
 void PSSinthesis::Sinthesis(double s)
 {
     //Sinthesis, t1

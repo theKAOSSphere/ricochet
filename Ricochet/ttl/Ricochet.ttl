@@ -38,14 +38,19 @@ Based on the MOD Audio pitch shifting plugins: https://github.com/mod-audio/mod-
 
 Inspired by the classic DigiTech Whammy Ricochet(*), this pitch-shifter can shift an input pitch from -24 semitones down to +24 semitones up. Functionality mimics the behaviour of the original hardware pedal, including momentary and latching modes, adjustable shift and return times, a clean blend option, selectable pitch shift direction, and interval selection.
 
+• "Trigger" engages or disengages the pitch shift effect.
 • "Interval" selects the target pitch step (2nd, 4th, 5th, Octave, etc.) and "Direction" chooses whether that sweep goes up or down.
 • "Shift Time" and "Return Time" define how fast the pitch glides to and from the target when the trigger engages or releases.
 • Use "Mode" to pick momentary or latching behaviour. 
-• "Clean" adds the dry signal (automatically enabled for the Octave+Dry interval) and "Gain" controls the wet level only.
+• "Clean" adds the dry signal (automatically enabled for the Octave+Dry interval) and "Wet Gain" controls the wet level only.
 • "Fidelity" sets, well, the fidelity of the plugin. As you lower the fidelity, the sound will become less pristine, but the plugin will also use less processing. The opposite holds true for increasing the fidelity, this will grant you a clearer pitch-shifted signal at the cost of significantly more processing being used. 
   - The Lo-Fi setting is reminiscent of bit-crushed sounds, if you are looking for those synthesizer-like basslines, or dirty octave-up sounds, this is your setting!
   - The Hi-Fi setting is great if you are looking to emulate (for example) something like a 12-string guitar, be sure to mind that CPU-meter in the bottom-right of the screen though! 
   - The settings in between are created to let you make the perfect trade-off between quality and performance. 
+  - Additionally, there are even higher fidelity settings named Ultra and Insane. They offer higher quality but adds noticeable latency. Ultra is as high as I can go without the latency being too distracting.
+• "True Bypass" allows you to select the plugin behaviour when Trigger is off.
+  - When enabled, the plugin will route the input signal directly to the output when Trigger is off. This eliminates any latency when the Trigger is not engaged, but the transitions when engaging/disengaging the Trigger may be less smooth.
+  - When disabled, the plugin will still process the input signal even when Trigger is off. The pitch glides are smoother but latency is added even when the Trigger is not engaged.
 
 (*) 'Other product names modeled in this software are trademarks of their respective companies that do not endorse and are not associated or affiliated with me.
 Digitech Whammy is a trademark or trade name of another manufacturer and was used merely to identify the product whose sound was reviewed in the creation of this product.
@@ -99,15 +104,16 @@ lv2:port
     lv2:shortName "Interval";
     lv2:default 3;
     lv2:minimum 0;
-    lv2:maximum 6;
+    lv2:maximum 7;
     lv2:portProperty lv2:integer, lv2:enumeration;
     lv2:scalePoint [rdfs:label "Unison"; rdf:value 0];
     lv2:scalePoint [rdfs:label "2nd"; rdf:value 1];
     lv2:scalePoint [rdfs:label "4th"; rdf:value 2];
     lv2:scalePoint [rdfs:label "5th"; rdf:value 3];
-    lv2:scalePoint [rdfs:label "Octave"; rdf:value 4];
-    lv2:scalePoint [rdfs:label "Double Octave"; rdf:value 5];
-    lv2:scalePoint [rdfs:label "Octave + Dry"; rdf:value 6];
+    lv2:scalePoint [rdfs:label "7th"; rdf:value 4];
+    lv2:scalePoint [rdfs:label "Octave"; rdf:value 5];
+    lv2:scalePoint [rdfs:label "Double Octave"; rdf:value 6];
+    lv2:scalePoint [rdfs:label "Octave + Dry"; rdf:value 7];
 ],
 [
     a lv2:ControlPort, lv2:InputPort;
@@ -158,9 +164,9 @@ lv2:port
 [
     a lv2:ControlPort, lv2:InputPort;
     lv2:index 9;
-    lv2:symbol "Gain";
-    lv2:name "Gain";
-    lv2:shortName "Gain";
+    lv2:symbol "WetGain";
+    lv2:name "Wet Gain";
+    lv2:shortName "Wet Gain";
     lv2:default 3.0;
     lv2:minimum -20.0;
     lv2:maximum 20.0;
@@ -182,6 +188,17 @@ lv2:port
     lv2:scalePoint [rdfs:label "Hi-Fi"; rdf:value 3];
     lv2:scalePoint [rdfs:label "Ultra"; rdf:value 4];
     lv2:scalePoint [rdfs:label "Insane"; rdf:value 5];
+],
+[
+    a lv2:ControlPort, lv2:InputPort;
+    lv2:index 11;
+    lv2:symbol "TrueBypass";
+    lv2:name "True Bypass";
+    lv2:shortName "True Bypass";
+    lv2:default 1;
+    lv2:minimum 0;
+    lv2:maximum 1;
+    lv2:portProperty lv2:toggled, lv2:integer;
 ];
 
 modgui:gui [

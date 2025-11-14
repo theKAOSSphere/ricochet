@@ -51,6 +51,9 @@ public:
     ~PSSinthesis();
     void PreSinthesis();
     void Sinthesis(double s);
+    void ClearYShift();
+    void ClearBuffers();
+    void SetYShiftFromInput(const float* in, int n);
 
     int N; //Size of the frame
     int hopa; //Analysis hop
