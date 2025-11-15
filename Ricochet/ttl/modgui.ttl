@@ -1,0 +1,38 @@
+@prefix modgui: <http://moddevices.com/ns/modgui#> .
+@prefix lv2:    <http://lv2plug.in/ns/lv2core#> .
+
+<https://github.com/theKAOSSphere/ricochet>
+    modgui:gui [
+        modgui:resourcesDirectory <modgui> ;
+        modgui:iconTemplate <modgui/icon-ricochet.html> ;
+        modgui:stylesheet <modgui/css-ricochet.css> ;
+        modgui:screenshot <modgui/screenshot-ricochet.png> ;
+        modgui:thumbnail <modgui/thumbnail-ricochet.png> ;
+        modgui:brand "KAOSS" ;
+        modgui:label "Ricochet" ;
+        modgui:model "boxy" ;
+        modgui:panel "1-select-4-knobs" ;
+        modgui:color "red" ;
+        modgui:knob "black" ;
+        modgui:port [
+            lv2:index 0 ;
+            lv2:symbol "Interval" ;
+            lv2:name "Interval" ;
+        ] , [
+            lv2:index 1 ;
+            lv2:symbol "ShiftTime" ;
+            lv2:name "Shift" ;
+        ] , [
+            lv2:index 2 ;
+            lv2:symbol "ReturnTime" ;
+            lv2:name "Return" ;
+        ] , [
+            lv2:index 3 ;
+            lv2:symbol "WetGain" ;
+            lv2:name "Wet Gain" ;
+        ] , [
+            lv2:index 4 ;
+            lv2:symbol "Fidelity" ;
+            lv2:name "Fidelity" ;
+        ] ;
+    ] .
