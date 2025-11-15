@@ -28,6 +28,9 @@ doap:maintainer [
     foaf:mbox <mailto:thekaossphere@gmail.com>;
 ];
 
+lv2:microVersion 2 ;
+lv2:minorVersion 0 ;
+
 mod:brand "KAOSS";
 mod:label "Ricochet";
 
@@ -199,13 +202,4 @@ lv2:port
     lv2:minimum 0;
     lv2:maximum 1;
     lv2:portProperty lv2:toggled, lv2:integer;
-];
-
-modgui:gui [
-    modgui:resourcesDirectory <modgui>;
-    modgui:stylesheet <modgui/css-ricochet.css>;
-    modgui:iconTemplate <modgui/icon-ricochet.html>;
-    modgui:templateData <modgui/data-ricochet.json>;
-    modgui:screenshot <modgui/screenshot-ricochet.png>;
-    modgui:thumbnail <modgui/thumb-ricochet.png>;
-].
+] .

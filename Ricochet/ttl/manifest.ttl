@@ -12,3 +12,4 @@
     <http://lv2plug.in/ns/lv2core#appliesTo> <https://github.com/theKAOSSphere/ricochet> ;
     <http://www.w3.org/2000/01/rdf-schema#label> "Default" ;
     <http://www.w3.org/2000/01/rdf-schema#seeAlso> <default-preset.ttl> .
+<https://github.com/theKAOSSphere/ricochet> rdfs:seeAlso <modgui.ttl> .
