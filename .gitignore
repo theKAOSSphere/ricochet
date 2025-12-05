@@ -1,0 +1,34 @@
+# Ignore release archives
+*.zip
+*.tar
+*.tgz
+*.tar.gz
+*.tar.bz2
+*.tbz2
+*.tar.xz
+*.tar.lz
+*.tar.zst
+*.7z
+*.rar
+
+# Release directories
+releases/
+dist/
+
+# Common build artifacts
+*.o
+*.obj
+*.so
+*.dll
+*.exe
+
+# Python, IDE and OS files
+__pycache__/
+*.py[cod]
+*.swp
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode/
+.idea/
