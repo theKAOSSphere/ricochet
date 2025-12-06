@@ -48,7 +48,9 @@ public:
         wisdomFile = wfile;
         Construct(n_samples, nBuffers, samplerate, wfile.c_str());
     }
+
     ~Ricochet(){Destruct();}
+    
     void Construct(uint32_t n_samples, int nBuffers, double samplerate, const char* wisdomFile)
     {
         this->nBuffers = nBuffers;
@@ -59,6 +61,10 @@ public:
         objg = new GainClass(n_samples);
 
         last_out = new float[n_samples];
+        
+        // Variables to handle crossfading during true bypass
+        fade_progress = 0.0;
+        fade_step = 1.0 / (0.020 * SampleRate); 
 
         cont = 0;
         current_s = 0.0;
@@ -72,17 +78,19 @@ public:
         last_mode_was_latch = false;
         auto_add_dry = false;
     }
+    
     void Destruct()
     {
-    	delete obja;
+        delete obja;
         delete objs;
         delete objg;
         delete[] last_out;
     }
+    
     void Realloc(uint32_t n_samples, int nBuffers)
     {
-    	Destruct();
-    	Construct(n_samples, nBuffers, SampleRate, wisdomFile.c_str());
+        Destruct();
+        Construct(n_samples, nBuffers, SampleRate, wisdomFile.c_str());
     }
 
     void SetFidelity(int fidelity, uint32_t n_samples)
@@ -91,26 +99,26 @@ public:
 
         switch (fidelity)
         {
-        case 0: 
-            bufsize = nBuffersSW(n_samples,FIDELITY0);
-            break;
-        case 1:
-            bufsize = nBuffersSW(n_samples,FIDELITY1);
-            break;
-        case 2:
-            bufsize = nBuffersSW(n_samples,FIDELITY2);
-            break;
-        case 3:
-            bufsize = nBuffersSW(n_samples,FIDELITY3);
-            break;
-        case 4:
-            bufsize = nBuffersSW(n_samples,FIDELITY4);
-            break;
-        case 5:
-            bufsize = nBuffersSW(n_samples,FIDELITY5);
-            break;
-        default:
-            return;
+            case 0: 
+                bufsize = nBuffersSW(n_samples,FIDELITY0);
+                break;
+            case 1:
+                bufsize = nBuffersSW(n_samples,FIDELITY1);
+                break;
+            case 2:
+                bufsize = nBuffersSW(n_samples,FIDELITY2);
+                break;
+            case 3:
+                bufsize = nBuffersSW(n_samples,FIDELITY3);
+                break;
+            case 4:
+                bufsize = nBuffersSW(n_samples,FIDELITY4);
+                break;
+            case 5:
+                bufsize = nBuffersSW(n_samples,FIDELITY5);
+                break;
+            default:
+                return;
         }
 
         if (nBuffers != bufsize || obja->hopa != (int)n_samples)
@@ -158,6 +166,8 @@ public:
     bool prev_engaged;
     float* last_out;
     double prev_ramp_samples_remaining;
+    double fade_progress;
+    double fade_step;
 };
 
 /**********************************************************************************************************************************************************/
@@ -173,10 +183,7 @@ static const LV2_Descriptor Descriptor = {
     Ricochet::extension_data
 };
 
-/**********************************************************************************************************************************************************/
-
-LV2_SYMBOL_EXPORT
-const LV2_Descriptor* lv2_descriptor(uint32_t index)
+LV2_SYMBOL_EXPORT const LV2_Descriptor* lv2_descriptor(uint32_t index)
 {
     if (index == 0) return &Descriptor;
     else return NULL;
@@ -214,6 +221,9 @@ void Ricochet::activate(LV2_Handle instance)
     plugin->fading_out = false;
     plugin->prev_engaged = false;
     plugin->prev_ramp_samples_remaining = 0.0;
+    (plugin->objs)->ClearBuffers();
+    plugin->cont = 0;
+    plugin->fade_progress = 0.0;
 }
 
 /**********************************************************************************************************************************************************/
@@ -233,8 +243,7 @@ void Ricochet::connect_port(LV2_Handle instance, uint32_t port, void *data)
 
 void Ricochet::run(LV2_Handle instance, uint32_t n_samples)
 {
-    Ricochet *plugin;
-    plugin = (Ricochet *) instance;
+    Ricochet *plugin = (Ricochet *) instance;
 
     float *in           = plugin->ports[IN];
     float *out          = plugin->ports[OUT];
@@ -252,44 +261,53 @@ void Ricochet::run(LV2_Handle instance, uint32_t n_samples)
     plugin->SetFidelity(fidelity, n_samples);
     double semitone = plugin->UpdateStep(trigger, latch, interval, up, shift, retrn, n_samples);
 
-    // Check if the ramp just finished this block
+    // --- STATE MACHINE FOR BYPASS LOGIC ---
+
+    // 1. Detect Pitch Return Completion
+    // When ramp hits 0, the pitch effect is effectively "off", but processing is running.
     bool ramp_just_finished = (plugin->ramp_samples_remaining == 0.0) && (plugin->prev_ramp_samples_remaining > 0.0);
     plugin->prev_ramp_samples_remaining = plugin->ramp_samples_remaining;
 
-    // Start fade in when engaging (ONLY if true bypass is enabled)
-    if (true_bypass && plugin->engaged && !plugin->prev_engaged) {
+    // 2. Handle Engagement (Start Fade In)
+    if (true_bypass && plugin->engaged && !plugin->prev_engaged) 
+    {
         plugin->fading_in = true;
-        plugin->fading_out = false; // Ensure only one fade is active
+        plugin->fading_out = false;
+        plugin->fade_progress = 0.0;
+        // CRITICAL FIX: Clear buffers on engage. Do not "Prime" them with SetYShiftFromInput.
+        // Starting from zero buffers means the wet signal fades in from silence = No Pop.
+        (plugin->objs)->ClearBuffers(); 
+        plugin->cont = 0; 
+        plugin->was_true_bypassing = false;
     }
     
-    // Start fade out when ramp to zero is complete and we are disengaged (ONLY if true bypass is enabled)
-    if (true_bypass && !plugin->engaged && ramp_just_finished && plugin->ramp_target == 0.0) {
+    // 3. Handle Disengagement (Start Fade Out)
+    // Only fade out if true bypass is enabled, we aren't engaged, and pitch has returned to 0.
+    if (true_bypass && !plugin->engaged && ramp_just_finished && plugin->ramp_target == 0.0) 
+    {
         plugin->fading_out = true;
-        plugin->fading_in = false; // Ensure only one fade is active
+        plugin->fading_in = false;
+        plugin->fade_progress = 0.0;
     }
     
     plugin->prev_engaged = plugin->engaged;
 
-    (plugin->obja)->PreAnalysis(plugin->nBuffers, in);
-    (plugin->objs)->PreSinthesis();
+    // --- PROCESSING ---
 
-    if (true_bypass && !plugin->fading_in && !plugin->fading_out && !plugin->engaged && plugin->ramp_position == 0.0 && plugin->ramp_samples_remaining == 0.0) {
+    // Optimization: If hard bypassed and stable (not fading), copy and return.
+    if (true_bypass && !plugin->fading_in && !plugin->fading_out && !plugin->engaged 
+        && plugin->ramp_position == 0.0 && plugin->ramp_samples_remaining == 0.0) 
+    {
         memcpy(out, in, n_samples * sizeof(float));
-        plugin->was_true_bypassing = true;
+        plugin->was_true_bypassing = true; // Mark that we have been sleeping
         return;
     }
 
-    if (plugin->was_true_bypassing) {
-        if (!plugin->engaged) {
-            (plugin->objs)->ClearBuffers();
-        } else {
+    // Standard Processing Logic
+    (plugin->obja)->PreAnalysis(plugin->nBuffers, in);
+    (plugin->objs)->PreSinthesis();
 
-            (plugin->objs)->SetYShiftFromInput(in, n_samples);
-        }
-        plugin->cont = 0;
-    }
-    plugin->was_true_bypassing = false;
-
+    // Safety: If input is silent, output silence (saves CPU on denormals)
     if (InputAbsSum(in, n_samples) == 0)
     {
         memset(out,0,sizeof(float)*n_samples);
@@ -298,11 +316,13 @@ void Ricochet::run(LV2_Handle instance, uint32_t n_samples)
 
     (plugin->objg)->SetGaindB(wet_gain);
 
-	bool processed = false;
-	if (plugin->cont < plugin->nBuffers-1)
-		plugin->cont = plugin->cont + 1;
-	else
-	{
+    bool processed = false;
+    if (plugin->cont < plugin->nBuffers-1)
+    {
+        plugin->cont = plugin->cont + 1;
+    }
+    else
+    {
         (plugin->obja)->Analysis();
         (plugin->objs)->Sinthesis(semitone);
         (plugin->objg)->SimpleGain((plugin->objs)->yshift, out);
@@ -313,44 +333,53 @@ void Ricochet::run(LV2_Handle instance, uint32_t n_samples)
                 out[i] += static_cast<float>(dry[i]);
         }
         processed = true;
-	}
+    }
 
-	if (processed) {
+    // --- CROSSFADE LOGIC ---
+    
+    if (processed) 
+    {
+        // Save current output for next block (in case we need it, though less critical now)
         memcpy(plugin->last_out, out, n_samples * sizeof(float));
-        if (plugin->fading_in) {
-            for (uint32_t i = 0; i < n_samples; ++i) {
-                float f = i / (float)n_samples;
-                out[i] = in[i] * (1.0f - f) + out[i] * f;
-            }
-            plugin->fading_in = false;
-        } else if (plugin->fading_out) {
-            for (uint32_t i = 0; i < n_samples; ++i) {
-                float f = 1.0f - i / (float)n_samples;
-                out[i] = out[i] * f + in[i] * (1.0f - f);
-            }
-            plugin->fading_out = false;
-        }
-    } else if (plugin->fading_out) {
-        for (uint32_t i = 0; i < n_samples; ++i) {
-            float f = 1.0f - i / (float)n_samples;
-            out[i] = plugin->last_out[i] * f + in[i] * (1.0f - f);
-        }
-        plugin->fading_out = false;
-    } else {
-        // memcpy(out, in, n_samples * sizeof(float));
-        // This is the "buffered bypass" path.
-        // It MUST output the same signal as the processed path
-        // to avoid "flicker".
-        (plugin->obja)->Analysis();
-        (plugin->objs)->Sinthesis(0.0); // Force 0.0 semitones
-        (plugin->objg)->SimpleGain((plugin->objs)->yshift, out);
-        if (plugin->auto_add_dry || clean == 1)
+
+        if (plugin->fading_in) 
         {
-            const double *dry = (plugin->obja)->frames;
-            for (uint32_t i = 0; i<n_samples; ++i)
-                out[i] += static_cast<float>(dry[i]);
+            // Fading FROM Input TO Wet
+            for (uint32_t i = 0; i < n_samples; ++i) 
+            {
+                double f = std::min(1.0, plugin->fade_progress);
+                // Linear Crossfade: Dry -> Wet
+                out[i] = in[i] * (1.0f - f) + out[i] * f;
+                plugin->fade_progress += plugin->fade_step;
+            }
+            if (plugin->fade_progress >= 1.0) plugin->fading_in = false;
+        } 
+        else if (plugin->fading_out) 
+        {
+            // Fading FROM Wet TO Input
+            for (uint32_t i = 0; i < n_samples; ++i) 
+            {
+                double f = std::min(1.0, plugin->fade_progress);
+                // Linear Crossfade: Wet -> Dry
+                out[i] = out[i] * (1.0f - f) + in[i] * f;
+                plugin->fade_progress += plugin->fade_step;
+            }
+            if (plugin->fade_progress >= 1.0) plugin->fading_out = false;
         }
-	}
+    }
+    else 
+    {
+        // Buffering phase (pitch shifter filling up), output silence or dry depending on state
+        if (plugin->fading_in) 
+        {
+            // If we are fading in but DSP isn't ready, output dry to avoid silence gap
+            memcpy(out, in, n_samples * sizeof(float));
+        } 
+        else 
+        {
+            memset(out, 0, n_samples * sizeof(float));
+        }
+    }
 }
 
 /**********************************************************************************************************************************************************/
@@ -368,12 +397,12 @@ const void* Ricochet::extension_data(const char* uri)
 }
 
 double Ricochet::UpdateStep(bool trigger_active,
-                      bool latch_mode,
-                      double interval_control,
-                      bool direction_up,
-                      double shift_time,
-                      double return_time,
-                      uint32_t n_samples)
+                            bool latch_mode,
+                            double interval_control,
+                            bool direction_up,
+                            double shift_time,
+                            double return_time,
+                            uint32_t n_samples)
 {
     double clamped = std::max(0.0, std::min(interval_control, static_cast<double>(kIntervalChoiceCount - 1)));
     size_t interval_index = static_cast<size_t>(clamped + 0.5);
@@ -406,6 +435,10 @@ double Ricochet::UpdateStep(bool trigger_active,
 
     double target = engaged ? (direction_up ? choice.semitones : -choice.semitones) : 0.0;
     double duration = engaged ? shift_time : return_time;
+
+    // If pitch needs to change, enforce a minimum duration of 20ms to prevent a pop
+    if (std::fabs(ramp_position - target) > 1e-9)
+        duration = std::max(duration, 0.020);
 
     if (duration <= 0.0)
     {
