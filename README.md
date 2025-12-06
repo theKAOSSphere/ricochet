@@ -115,7 +115,7 @@ sudo apt-get install build-essential libtool pkg-config lv2-dev
   ```bash
   make
   ```
-  A `ricochet.lv2` bundle will be created inside the `source/` directory. You can then copy it to your `~/.lv2/` or `/usr/local/lib/lv2/` directory for your LV2 host to detect it.
+  A `ricochet.lv2` bundle will be created inside the `source/` directory. You can then follow the desktop installation instructions to copy it to `/path/to/lv2/directory/`.
 
 </details>
 
