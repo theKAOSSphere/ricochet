@@ -28,7 +28,7 @@ doap:maintainer [
     foaf:mbox <mailto:thekaossphere@gmail.com>;
 ];
 
-lv2:microVersion 2 ;
+lv2:microVersion 3 ;
 lv2:minorVersion 0 ;
 
 mod:brand "KAOSS";
